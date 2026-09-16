@@ -1,17 +1,17 @@
-resource "aws_lambda_function" "api" {
-  function_name = "${var.project}-${var.stage}-api"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "handler.handler"
-  runtime       = "python3.12"
-  timeout       = 15
-  memory_size   = 512
-
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-
-  environment {
-    variables = {
-      TABLE_NAME = aws_dynamodb_table.main.name
+terraform {
+  required_version = ">= 1.6"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.60"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
     }
   }
+}
+
+provider "aws" {
+  region = var.aws_region
 }
