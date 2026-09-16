@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# installed by `pip install -t .` for Lambda packaging
+fastapi/
+pydantic/
+pydantic_core/
+mangum/
+boto3/
+botocore/
+s3transfer/
+jmespath/
+python_dateutil/
+six.py
+typing_extensions.py
+annotated_types/
+starlette/
+anyio/
+sniffio/
+idna/
+exceptiongroup/
