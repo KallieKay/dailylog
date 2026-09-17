@@ -114,3 +114,63 @@ dailylog/
 │ ├── eventbridge.tf # (Day 5)
 │ └── outputs.tf
 └── .github/workflows/ # (Day 8)
+
+
+---
+
+## Data model
+
+Single DynamoDB table, `PK = USER#me` for all items (single-user v1).
+
+| Entity | PK | SK | Notes |
+|---|---|---|---|
+| Subject | `USER#me` | `SUBJECT#<id>` | name, color, goal hours/week |
+| Study session | `USER#me` | `SESSION#<date>#<id>` | subject_id, duration, notes |
+| Habit | `USER#me` | `HABIT#<id>` | name, icon, active |
+| Check-in | `USER#me` | `CHECKIN#<date>#<habitId>` | completed |
+
+**Access patterns:**
+- List subjects → `begins_with(SK, "SUBJECT#")`
+- Sessions in range → `SK BETWEEN "SESSION#<from>" AND "SESSION#<to>#zzzz"`
+- Today's check-ins → `begins_with(SK, "CHECKIN#<today>")`
+
+No GSIs, no scans. Every read is a single `query`.
+
+---
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/health` | Health check |
+| `GET` | `/subjects` | List subjects |
+| `POST` | `/subjects` | Create subject |
+| `GET` | `/sessions?from=&to=` | List sessions in range |
+| `POST` | `/sessions` | Log a session |
+| `GET` | `/habits` | List habits |
+| `POST` | `/habits` | Create habit |
+| `GET` | `/checkins?date=` | List check-ins for a day |
+| `POST` | `/checkins` | Toggle a check-in |
+
+---
+
+## Running locally
+
+**Prerequisites:** Python 3.12+, Terraform 1.6+, AWS CLI configured, an AWS account.
+
+```powershell
+# Backend: install and test
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pytest -v
+
+# Build the Lambda package
+.\build.ps1
+
+# Deploy
+cd ..\terraform
+terraform init
+terraform plan
+terraform apply
