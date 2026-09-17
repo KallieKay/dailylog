@@ -67,3 +67,24 @@ The app is deliberately simple so the cloud layer can be the subject of the work
 │ ▼ │
 │ SES (weekly email) │
 └──────────────────────────────────────┘
+*(Architecture diagram placeholder — replace with Excalidraw export on Day 10.)*
+
+---
+
+## Stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| Compute | AWS Lambda (Python 3.12) | Pay-per-request, zero idle cost, fits the free tier |
+| API | API Gateway (HTTP API) | Cheaper than REST API, simpler |
+| Framework | FastAPI + Mangum | Familiar locally, Lambda-compatible in production |
+| Storage | DynamoDB (single table, on-demand) | Free tier, no capacity planning, clean access patterns |
+| Scheduling | EventBridge | Managed cron, no servers |
+| Email | Amazon SES | Cheap, reliable, free tier covers this many times over |
+| CDN | CloudFront | Global edge caching for the frontend |
+| IaC | Terraform | Everything is declared, nothing is clicked |
+| CI/CD | GitHub Actions (OIDC) | No long-lived AWS keys in the repo |
+| Observability | CloudWatch + X-Ray | Logs, metrics, traces, alarms |
+| Load testing | k6 | Real numbers, not vibes |
+
+---
