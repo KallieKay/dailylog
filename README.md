@@ -34,3 +34,36 @@ That meant:
 The app is deliberately simple so the cloud layer can be the subject of the work.
 
 ---
+## Architecture
+┌──────────────────────┐
+│ Static frontend │
+│ S3 + CloudFront │ (Day 6)
+└──────────┬───────────┘
+│
+▼
+┌──────────────────────┐
+│ API Gateway (HTTP) │
+└──────────┬───────────┘
+│
+▼
+┌──────────────────────┐
+│ Lambda (FastAPI + │
+│ Mangum) │
+└──────────┬───────────┘
+│
+▼
+┌──────────────────────┐
+│ DynamoDB │
+│ (single table) │
+└──────────┬───────────┘
+│
+▼
+┌──────────────────────────────────────┐
+│ EventBridge (Sun 08:00 cron) │ (Day 5)
+│ │ │
+│ ▼ │
+│ Lambda (report generator) │
+│ │ │
+│ ▼ │
+│ SES (weekly email) │
+└──────────────────────────────────────┘
