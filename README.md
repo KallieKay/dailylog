@@ -18,3 +18,19 @@ Every Sunday morning, a scheduled job emails a summary: total study hours broken
 It's a small app on purpose. The point of the project is the cloud architecture underneath it.
 
 ---
+
+## Why this project exists
+
+I'm applying to a **cloud computing elective** and wanted a project that demonstrates real cloud engineering, not just "a web app that happens to run on AWS."
+
+That meant:
+
+- Infrastructure as Code, not console clicking
+- Event-driven architecture, not synchronous everything
+- Observability from day one, not bolted on later
+- A cost model I can defend, not hand-waving
+- A production-shaped deployment pipeline
+
+The app is deliberately simple so the cloud layer can be the subject of the work.
+
+---
