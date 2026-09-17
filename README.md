@@ -88,3 +88,29 @@ The app is deliberately simple so the cloud layer can be the subject of the work
 | Load testing | k6 | Real numbers, not vibes |
 
 ---
+## Repository layout
+dailylog/
+├── backend/
+│ ├── app/
+│ │ ├── main.py # FastAPI routes
+│ │ ├── db.py # DynamoDB access patterns
+│ │ ├── models.py # Pydantic models
+│ │ └── config.py # env config
+│ ├── tests/ # pytest, moto-mocked DynamoDB
+│ ├── handler.py # Lambda entrypoint (Mangum)
+│ ├── requirements.txt
+│ └── build.ps1 # packages the Lambda zip
+├── frontend/
+│ └── index.html # (Day 3)
+├── terraform/
+│ ├── main.tf
+│ ├── variables.tf
+│ ├── dynamodb.tf
+│ ├── lambda.tf
+│ ├── apigateway.tf
+│ ├── iam.tf
+│ ├── s3.tf # (Day 3)
+│ ├── cloudfront.tf # (Day 6)
+│ ├── eventbridge.tf # (Day 5)
+│ └── outputs.tf
+└── .github/workflows/ # (Day 8)
