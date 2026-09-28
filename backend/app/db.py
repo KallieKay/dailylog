@@ -1,7 +1,7 @@
 #Heart of the App. Single-table access patterns all in one file.
 import boto3
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional
 
 from .config import TABLE_NAME, AWS_REGION, USER_ID
@@ -11,7 +11,7 @@ table = dynamodb.Table(TABLE_NAME)
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _today() -> str:
