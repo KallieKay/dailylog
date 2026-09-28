@@ -2,7 +2,9 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-# installed by `pip install -t .` for Lambda packaging
+
+# Any packages accidentally installed with `pip install -t .`
+# (prod deps)
 fastapi/
 pydantic/
 pydantic_core/
@@ -20,3 +22,31 @@ anyio/
 sniffio/
 idna/
 exceptiongroup/
+# (dev/test deps)
+moto/
+pytest/
+httpx/
+httpcore/
+requests/
+werkzeug/
+jinja2/
+markupsafe/
+responses/
+pluggy/
+iniconfig/
+packaging/
+pycparser/
+urllib3/
+yaml/
+dateutil/
+tzdata/
+py_partiql_parser/
+# Windows pywin32 artifacts
+isapi/
+pythonwin/
+win32/
+win32com/
+win32comext/
+pywin32_system32/
+# dist-info directories
+*.dist-info/
