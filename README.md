@@ -2,7 +2,20 @@
 
 A serverless study and habit tracker built entirely on AWS, deployed with Terraform, and observed with CloudWatch.
 
-> **Status:** Work in progress — Day 2 of 10. The API and database are deployed; the frontend, weekly report job, and CI/CD are pending.
+> **Status:** Work in progress — Day 3 of 10. The API and database are deployed and tested end-to-end; frontend pending.
+
+### What works today
+- All 9 API endpoints deployed and verified against live AWS infrastructure
+- Full round-trip confirmed: API Gateway → Lambda → FastAPI → DynamoDB → back
+- 6 automated tests passing (subjects, sessions, habits, check-ins, upsert logic) with moto-mocked DynamoDB
+
+### Project log
+| Day | Goal | Status |
+|-----|------|--------|
+| 1 | Deploy API + DynamoDB with Terraform | ✅ Done |
+| 2 | Verify all endpoints, full test coverage, clean repo | ✅ Done |
+| 3 | Frontend on S3 + CloudFront | 🔄 Next |
+| 4–10 | EventBridge report, SES, CloudWatch, CI/CD, load test, write-up | ⏳ Pending |
 
 ---
 
