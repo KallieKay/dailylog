@@ -1,19 +1,25 @@
-# Build artifacts
-build/
-
-# Terraform local state
-terraform/.terraform/
-terraform/.terraform.lock.hcl
-terraform/*.tfstate
-terraform/*.tfstate.backup
-
 # Python
+.venv/
+venv/
 __pycache__/
 *.pyc
-*.pyo
 .pytest_cache/
-.venv/
+*.egg-info/
+
+# Build artifacts
+build/
+terraform/build/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform/
+
+# Local scratch
+payload.json
+*.local
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Keep the lock file tracked
+!terraform/.terraform.lock.hcl
