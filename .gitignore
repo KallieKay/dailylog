@@ -23,3 +23,5 @@ Thumbs.db
 
 # Keep the lock file tracked
 !terraform/.terraform.lock.hcl
+# Python 3.12 Linux venv (WSL)
+.venv-linux/
