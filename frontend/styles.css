@@ -1,0 +1,109 @@
+:root {
+  --bg: #f8fafc;
+  --fg: #1e293b;
+  --muted: #64748b;
+  --accent: #3b82f6;
+  --border: #e2e8f0;
+  --surface: #ffffff;
+  --danger: #ef4444;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+header {
+  padding: 2rem 1.5rem 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1 { margin: 0; font-size: 1.75rem; }
+.subtitle { margin: 0.25rem 0 0; color: var(--muted); }
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+h2 {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.list { margin-bottom: 1rem; }
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.item:last-child { border-bottom: none; }
+.empty { color: var(--muted); font-style: italic; font-size: 0.9rem; }
+
+form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+input, select, button {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input, select { flex: 1; min-width: 120px; }
+
+button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+button:hover { background: #2563eb; }
+button:disabled { background: var(--muted); cursor: not-allowed; }
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--fg);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: opacity 0.2s;
+}
+
+.toast.error { background: var(--danger); }
+.hidden { opacity: 0; pointer-events: none; }
+
+@media (max-width: 600px) {
+  form { flex-direction: column; }
+  input, select, button { width: 100%; }
+}
