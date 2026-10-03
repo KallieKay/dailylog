@@ -1,0 +1,14 @@
+# Normalize all text files to LF on commit
+* text=auto eol=lf
+
+# Windows-native scripts keep CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Binary files — never touch
+*.png binary
+*.jpg binary
+*.gif binary
+*.zip binary
+*.so binary
+*.pyd binary
