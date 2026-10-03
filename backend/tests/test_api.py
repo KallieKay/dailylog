@@ -115,3 +115,70 @@ def test_checkin_upsert(dynamo_table):
     r = client.get("/checkins?date=2026-01-15")
     assert len(r.json()) == 1          # still one item, not two
     assert r.json()[0]["completed"] is False
+
+
+def test_session_rejects_negative_duration(dynamo_table):
+    import importlib
+    import app.db as db_module
+    import app.main as main_module
+    importlib.reload(db_module)
+    importlib.reload(main_module)
+    from fastapi.testclient import TestClient
+    client = TestClient(main_module.app)
+    subj = client.post("/subjects", json={"name": "X"}).json()
+    r = client.post("/sessions", json={"subject_id": subj["id"], "duration_min": -5})
+    assert r.status_code == 422
+
+
+def test_session_rejects_duration_over_1440(dynamo_table):
+    import importlib
+    import app.db as db_module
+    import app.main as main_module
+    importlib.reload(db_module)
+    importlib.reload(main_module)
+    from fastapi.testclient import TestClient
+    client = TestClient(main_module.app)
+    subj = client.post("/subjects", json={"name": "X"}).json()
+    r = client.post("/sessions", json={"subject_id": subj["id"], "duration_min": 9999})
+    assert r.status_code == 422
+
+
+def test_list_sessions_empty_range_returns_empty(dynamo_table):
+    import importlib
+    import app.db as db_module
+    import app.main as main_module
+    importlib.reload(db_module)
+    importlib.reload(main_module)
+    from fastapi.testclient import TestClient
+    client = TestClient(main_module.app)
+    r = client.get("/sessions?from=1999-01-01&to=1999-01-02")
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+def test_checkin_upsert_preserves_single_item(dynamo_table):
+    import importlib
+    import app.db as db_module
+    import app.main as main_module
+    importlib.reload(db_module)
+    importlib.reload(main_module)
+    from fastapi.testclient import TestClient
+    client = TestClient(main_module.app)
+    h = client.post("/habits", json={"name": "Read"}).json()
+    client.post("/checkins", json={"habit_id": h["id"], "date": "2026-01-01", "completed": True})
+    client.post("/checkins", json={"habit_id": h["id"], "date": "2026-01-01", "completed": False})
+    checkins = client.get("/checkins?date=2026-01-01").json()
+    matching = [c for c in checkins if c["habit_id"] == h["id"]]
+    assert len(matching) == 1
+    assert matching[0]["completed"] is False
+
+
+def test_health_returns_ok(dynamo_table):
+    import importlib
+    import app.main as main_module
+    importlib.reload(main_module)
+    from fastapi.testclient import TestClient
+    client = TestClient(main_module.app)
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
