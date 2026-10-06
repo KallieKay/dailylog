@@ -27,3 +27,7 @@ Thumbs.db
 .venv-linux/
 .idea/
 awscliv2.zip
+
+# Terraform plan outputs
+*.tfplan
+tfplan
