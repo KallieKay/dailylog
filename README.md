@@ -14,7 +14,7 @@ A serverless study and habit tracker built entirely on AWS, deployed with Terraf
 |-----|------|--------|
 | 1 | Deploy API + DynamoDB with Terraform | ✅ Done |
 | 2 | Verify all endpoints, full test coverage, clean repo | ✅ Done |
-| 3 | Frontend on S3 + CloudFront | 🔄 Next |
+| 3 | Frontend on S3 + CloudFront with OAC; CORS preflight fixed | ✅ |
 | 4–10 | EventBridge report, SES, CloudWatch, CI/CD, load test, write-up | ⏳ Pending |
 
 ---
