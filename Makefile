@@ -26,3 +26,6 @@ destroy:
 
 clean:
 	rm -rf build/ backend/__pycache__ backend/.pytest_cache
+
+frontend:
+	cd frontend && ./deploy.sh
