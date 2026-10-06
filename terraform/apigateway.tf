@@ -36,3 +36,10 @@ resource "aws_lambda_permission" "apigw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }
+
+resource "aws_apigatewayv2_route" "options" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "OPTIONS /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+

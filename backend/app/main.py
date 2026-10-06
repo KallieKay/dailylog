@@ -63,3 +63,12 @@ def get_checkins(date: Optional[str] = None):
 @app.post("/checkins", status_code=201)
 def post_checkin(body: CheckinCreate):
     return db.upsert_checkin(body.habit_id, body.date, body.completed)
+
+@app.options("/")
+async def options_root():
+    return {}
+
+
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return {}
