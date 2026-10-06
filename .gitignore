@@ -25,3 +25,5 @@ Thumbs.db
 !terraform/.terraform.lock.hcl
 # Python 3.12 Linux venv (WSL)
 .venv-linux/
+.idea/
+awscliv2.zip
