@@ -149,3 +149,13 @@ button:disabled { background: var(--muted); cursor: not-allowed; }
     color: var(--muted);
     text-decoration: line-through;
 }
+
+.summary-group { margin-bottom: 1rem; }
+.summary-group:last-child { margin-bottom: 0; }
+.summary-group h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin: 0 0 0.5rem;
+}
