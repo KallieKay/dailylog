@@ -1,0 +1,3 @@
+# Copy this file to terraform.tfvars and fill in your own verified SES email.
+report_sender    = "you@example.com"
+report_recipient = "you@example.com"

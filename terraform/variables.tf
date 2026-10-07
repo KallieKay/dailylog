@@ -9,3 +9,13 @@ variable "project" {
 variable "stage" {
   default = "dev"
 }
+
+variable "report_sender" {
+  description = "Verified SES email address used as the From address"
+  type        = string
+}
+
+variable "report_recipient" {
+  description = "Email address the weekly report is sent to"
+  type        = string
+}

@@ -17,3 +17,11 @@ output "frontend_distribution_id" {
 output "frontend_url" {
   value = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
+
+output "report_function_name" {
+  value = aws_lambda_function.report.function_name
+}
+
+output "weekly_rule_name" {
+  value = aws_cloudwatch_event_rule.weekly.name
+}

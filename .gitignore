@@ -31,3 +31,4 @@ awscliv2.zip
 # Terraform plan outputs
 *.tfplan
 tfplan
+terraform.tfvars
