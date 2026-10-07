@@ -17,7 +17,15 @@ cp styles.css "$BUILD/styles.css"
 API_URL_CLEAN="${API_URL%/}"
 sed "s|%%API_URL%%|${API_URL_CLEAN}|g" app.js > "$BUILD/app.js"
 
-aws s3 sync "$BUILD" "s3://${BUCKET}/" --delete --cache-control "public, max-age=300"
+# HTML: short cache (5 min) — so deploys are visible quickly
+aws s3 sync "$BUILD" "s3://${BUCKET}/" --delete \
+  --exclude "*" --include "*.html" \
+  --cache-control "public, max-age=300"
+
+# CSS/JS: long cache (1 year, immutable) — busted by ETag changes on deploy
+aws s3 sync "$BUILD" "s3://${BUCKET}/" \
+  --exclude "*" --include "*.css" --include "*.js" \
+  --cache-control "public, max-age=31536000, immutable"
 
 aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*" > /dev/null
 
