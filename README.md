@@ -14,8 +14,9 @@ A serverless study and habit tracker built entirely on AWS, deployed with Terraf
 |-----|------|--------|
 | 1 | Deploy API + DynamoDB with Terraform | ✅ Done |
 | 2 | Verify all endpoints, full test coverage, clean repo | ✅ Done |
-| 3 | Frontend on S3 + CloudFront with OAC; CORS preflight fixed | ✅ |
-| 4 | Habits UI, check-in toggles, weekly summary with habit completion | ✅ |
+| 3 | Frontend on S3 + CloudFront with OAC; CORS preflight fixed | ✅ Done |
+| 4 | Habits UI, check-in toggles, weekly summary with habit completion | ✅ Done |
+| 5 | Weekly report Lambda + EventBridge cron + SES email | ✅ Done |
 | 4–10 | EventBridge report, SES, CloudWatch, CI/CD, load test, write-up | ⏳ Pending |
 
 ---
@@ -84,6 +85,24 @@ The app is deliberately simple so the cloud layer can be the subject of the work
 *(Architecture diagram placeholder — replace with Excalidraw export on Day 10.)*
 
 ---
+
+## Weekly Report
+
+Every Sunday at 08:00 UTC, an EventBridge rule invokes a dedicated Lambda that:
+
+1. Queries the last 7 days of study sessions and habit check-ins from DynamoDB
+2. Renders an HTML email with study totals per subject and habit completion rates
+3. Sends the email via SES
+
+This is a separate Lambda from the API — same codebase, different function, scoped IAM role. It only needs DynamoDB read + SES send, nothing else.
+
+Test it manually:
+
+    aws lambda invoke \
+      --function-name dailylog-dev-report \
+      --payload '{}' \
+      --cli-binary-format raw-in-base64-out \
+      /tmp/report-response.json
 
 ## Stack
 
