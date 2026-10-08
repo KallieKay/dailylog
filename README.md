@@ -114,13 +114,18 @@ CloudFront uses two cache strategies:
 
 Security posture:
 
-- HSTS enabled with `includeSubDomains` and `preload`
+- HSTS enabled with `includeSubDomains` and `preload` (1 year)
 - `X-Frame-Options: DENY` (prevents clickjacking)
 - `X-Content-Type-Options: nosniff` (prevents MIME sniffing)
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - TLS 1.2 minimum enforced at the edge
 
-Attached via a CloudFront response headers policy, not per-object S3 metadata.
+Headers are attached via a CloudFront response headers policy on **all three cache behaviors** (the two ordered HTML behaviors and the default asset behavior). Attaching to only the default is a common footgun — ordered behaviors override the default, so the HTML was initially served without the headers.
+
+Verify with:
+
+    URL=$(terraform output -raw frontend_url)
+    curl -sI "$URL/?v=$(date +%s)" | grep -iE 'strict-transport|x-content-type|x-frame|referrer'
 
 ## Stack
 
@@ -226,7 +231,3 @@ terraform init
 terraform plan
 terraform apply
 
-
-l
-
-kj
