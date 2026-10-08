@@ -40,23 +40,25 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/index.html"
-    target_origin_id       = "s3-frontend"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = aws_cloudfront_cache_policy.html_short.id
+    path_pattern               = "/index.html"
+    target_origin_id           = "s3-frontend"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.html_short.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/"
-    target_origin_id       = "s3-frontend"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = aws_cloudfront_cache_policy.html_short.id
+    path_pattern               = "/"
+    target_origin_id           = "s3-frontend"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.html_short.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
   }
 
   default_cache_behavior {
