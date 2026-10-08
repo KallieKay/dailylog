@@ -17,6 +17,7 @@ A serverless study and habit tracker built entirely on AWS, deployed with Terraf
 | 3 | Frontend on S3 + CloudFront with OAC; CORS preflight fixed | ✅ Done |
 | 4 | Habits UI, check-in toggles, weekly summary with habit completion | ✅ Done |
 | 5 | Weekly report Lambda + EventBridge cron + SES email | ✅ Done |
+| 6 | CloudFront cache tuning: short cache for HTML, immutable for assets, security headers, TLS 1.2 | ✅ Done|
 | 4–10 | EventBridge report, SES, CloudWatch, CI/CD, load test, write-up | ⏳ Pending |
 
 ---
@@ -103,6 +104,23 @@ Test it manually:
       --payload '{}' \
       --cli-binary-format raw-in-base64-out \
       /tmp/report-response.json
+
+## Frontend caching and security
+
+CloudFront uses two cache strategies:
+
+- **`index.html` and `/`** — 5-minute cache so deploys are visible quickly
+- **CSS/JS assets** — 1-year immutable cache, busted by S3 ETag changes on deploy
+
+Security posture:
+
+- HSTS enabled with `includeSubDomains` and `preload`
+- `X-Frame-Options: DENY` (prevents clickjacking)
+- `X-Content-Type-Options: nosniff` (prevents MIME sniffing)
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- TLS 1.2 minimum enforced at the edge
+
+Attached via a CloudFront response headers policy, not per-object S3 metadata.
 
 ## Stack
 
