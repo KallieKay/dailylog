@@ -25,3 +25,7 @@ output "report_function_name" {
 output "weekly_rule_name" {
   value = aws_cloudwatch_event_rule.weekly.name
 }
+
+output "dashboard_url" {
+  value = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.main.dashboard_name}"
+}
