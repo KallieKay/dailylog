@@ -5,9 +5,10 @@ from . import db
 from .models import (
     SubjectCreate, SessionCreate, HabitCreate, CheckinCreate,
 )
+from .middleware import StructuredLoggingMiddleware
 
 app = FastAPI(title="Daily Log API", version="0.1.0")
-
+app.add_middleware(StructuredLoggingMiddleware)
 
 @app.get("/health")
 def health():
