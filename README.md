@@ -18,6 +18,7 @@ A serverless study and habit tracker built entirely on AWS, deployed with Terraf
 | 4 | Habits UI, check-in toggles, weekly summary with habit completion | ✅ Done |
 | 5 | Weekly report Lambda + EventBridge cron + SES email | ✅ Done |
 | 6 | CloudFront cache tuning: short cache for HTML, immutable for assets, security headers, TLS 1.2 | ✅ Done|
+| 7 | Observability: CloudWatch dashboard, alarms, structured logging, X-Ray | ✅ Done|
 | 4–10 | EventBridge report, SES, CloudWatch, CI/CD, load test, write-up | ⏳ Pending |
 
 ---
