@@ -127,6 +127,50 @@ Verify with:
     URL=$(terraform output -raw frontend_url)
     curl -sI "$URL/?v=$(date +%s)" | grep -iE 'strict-transport|x-content-type|x-frame|referrer'
 
+## Observability
+
+Operational visibility lives in CloudWatch and X-Ray.
+
+**Dashboard:** `${var.project}-${var.stage}` in the CloudWatch console shows:
+
+- API Lambda invocations, errors, p50/p95/p99 duration
+- Report Lambda invocations and errors
+- DynamoDB consumed read/write capacity
+- API Gateway request and 5xx counts
+
+**Alarms:** two CloudWatch alarms push to an SNS topic that emails the project owner.
+
+- `dailylog-dev-api-5xx` — API Gateway 5xx count > 1 for 5 minutes
+- `dailylog-dev-report-errors` — report Lambda error count > 0
+
+Both fire on ALARM and recover on OK.
+
+**Structured logging:** the API Lambda emits one JSON line per request:
+
+    {"request_id": "...", "method": "POST", "path": "/subjects", "status": 201, "duration_ms": 45.3}
+
+Query recent 5xx errors in CloudWatch Logs Insights:
+
+    fields @timestamp, request_id, method, path, status, duration_ms
+    | filter status >= 500
+    | sort @timestamp desc
+    | limit 50
+
+Query the slowest requests:
+
+    fields @timestamp, method, path, duration_ms
+    | filter duration_ms > 500
+    | sort duration_ms desc
+    | limit 20
+
+**Tracing:** AWS X-Ray is enabled on both Lambdas. Traces include DynamoDB queries and SES calls made by the report function.
+
+    aws xray get-trace-summaries \
+      --start-time $(date -u -d '5 minutes ago' +%s) \
+      --end-time $(date -u +%s) \
+      --query 'TraceSummaries[0:5].[Id,Duration,Http.HttpStatus]' \
+      --output table
+
 ## Stack
 
 | Layer | Technology | Why |
