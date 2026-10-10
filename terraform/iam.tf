@@ -37,7 +37,15 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "dynamodb:DeleteItem"
         ]
         Resource = aws_dynamodb_table.main.arn
-      }
+      },
+        {
+          Effect = "Allow"
+          Action = [
+            "xray:PutTraceSegments",
+            "xray:PutTelemetryRecords"
+          ]
+          Resource = "*"
+        }
     ]
   })
 }

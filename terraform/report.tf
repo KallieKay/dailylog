@@ -72,6 +72,10 @@ resource "aws_lambda_function" "report" {
       REPORT_RECIPIENT = var.report_recipient
     }
   }
+
+  tracing_config {
+    mode = "Active"
+  }
 }
 
 # ---------- EventBridge schedule ----------

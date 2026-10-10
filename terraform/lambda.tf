@@ -20,4 +20,8 @@ resource "aws_lambda_function" "api" {
       TABLE_NAME = aws_dynamodb_table.main.name
     }
   }
+
+  tracing_config {
+    mode = "Active"
+  }
 }
