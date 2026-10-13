@@ -29,3 +29,6 @@ clean:
 
 frontend:
 	cd frontend && ./deploy.sh
+
+load:
+	@API_URL=$$(cd terraform && terraform output -raw api_url) k6 run loadtest/k6.js
