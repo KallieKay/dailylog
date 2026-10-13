@@ -32,7 +32,7 @@ resource "aws_iam_role" "github_deploy" {
           }
           StringLike = {
             # Only workflows running on the main branch of this specific repo
-            "token.actions.githubusercontent.com:sub" = "repo:KallieKay@200847887/dailylog@1372218309:ref:refs/heads/main"
+            "token.actions.githubusercontent.com:sub" = "repo:KallieKay@200847887/dailylog@1372218309:environment:production"
           }
         }
       }
