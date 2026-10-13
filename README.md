@@ -18,7 +18,9 @@ A serverless study and habit tracker built entirely on AWS, deployed with Terraf
 | 4 | Habits UI, check-in toggles, weekly summary with habit completion | ✅ Done |
 | 5 | Weekly report Lambda + EventBridge cron + SES email | ✅ Done |
 | 6 | CloudFront cache tuning: short cache for HTML, immutable for assets, security headers, TLS 1.2 | ✅ Done|
-| 7 | Observability: CloudWatch dashboard, alarms, structured logging, X-Ray | ✅ Done|
+| 7 | Observability: CloudWatch dashboard, alarms, structured logging, X-Ray | ✅ Done<br/>|
+| 8 | CI/CD with GitHub Actions and OIDC; Terraform state on S3 | ✅ |
+| 9 | k6 load test, cost model, OIDC postmortem | ✅ |
 | 4–10 | EventBridge report, SES, CloudWatch, CI/CD, load test, write-up | ⏳ Pending |
 
 ---
@@ -171,6 +173,12 @@ Query the slowest requests:
       --end-time $(date -u +%s) \
       --query 'TraceSummaries[0:5].[Id,Duration,Http.HttpStatus]' \
       --output table
+
+## Load test and cost model
+
+- [Load test results](docs/load-test-results.md) — k6 run at 8 concurrent users, with an analysis of the Lambda concurrency ceiling we hit
+- [Cost model](docs/cost-model.md) — cost at 1, 100, 10k, and 100k users
+- [OIDC postmortem](docs/postmortem-oidc-sub-claim.md) — debugging the trust policy mismatch between GitHub Environments and AWS IAM
 
 ## Stack
 
