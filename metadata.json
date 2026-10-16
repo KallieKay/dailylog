@@ -1,0 +1,8 @@
+{
+  "name": "Daily Flow",
+  "description": "Study with rhythm. Track your habits. Grow every day.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
