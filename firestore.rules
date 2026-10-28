@@ -74,6 +74,20 @@ service cloud.firestore {
         && data.completed is bool;
     }
 
+    // Validation for Post
+    function isValidPost(data) {
+      return data.id is string && data.id.size() <= 64
+        && data.userId is string && data.userId == request.auth.uid
+        && data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 100
+        && data.type in ['image', 'video', 'reel', 'document']
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && (!('caption' in data) || (data.caption is string && data.caption.size() <= 1000))
+        && (!('fileName' in data) || (data.fileName is string && data.fileName.size() <= 150))
+        && (!('subjectName' in data) || (data.subjectName is string && data.subjectName.size() <= 100))
+        && (!('likesCount' in data) || (data.likesCount is number && data.likesCount >= 0))
+        && (!('likedBy' in data) || data.likedBy is list);
+    }
+
     // User profiles
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -117,6 +131,17 @@ service cloud.firestore {
           && incoming().habit_id == existing().habit_id && incoming().userId == existing().userId;
         allow delete: if isOwner(userId);
       }
+    }
+
+    // Community Circle Posts & Reels
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming());
+      allow update: if isSignedIn() && (
+        (existing().userId == request.auth.uid && isValidPost(incoming()) && incoming().userId == existing().userId)
+        || incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likedBy'])
+      );
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
   }
 }

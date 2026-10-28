@@ -41,3 +41,21 @@ export interface Checkin {
   completed: boolean;
   updatedAt?: string;
 }
+
+export type PostMediaType = 'image' | 'video' | 'reel' | 'document';
+
+export interface Post {
+  id: string;
+  userId: string;
+  authorName: string;
+  authorUsername?: string;
+  authorPhoto?: string;
+  type: PostMediaType;
+  mediaUrl: string;
+  fileName?: string;
+  caption?: string;
+  subjectName?: string;
+  likesCount: number;
+  likedBy: string[];
+  createdAt: string;
+}

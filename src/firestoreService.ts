@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { UserProfile, Subject, Session, Habit, Checkin } from './types';
+import { UserProfile, Subject, Session, Habit, Checkin, Post } from './types';
 import { removeEmojis } from './storage';
 
 // Profile management
@@ -262,5 +262,74 @@ export async function setCheckinDoc(
     await setDoc(doc(db, 'users', userId, 'checkins', checkinDocId), data);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+// ================= CIRCLE FEED POSTS =================
+export function subscribePosts(onUpdate: (posts: Post[]) => void): Unsubscribe {
+  const path = 'posts';
+  const q = query(collection(db, 'posts'));
+  return onSnapshot(
+    q,
+    snapshot => {
+      const items: Post[] = [];
+      snapshot.forEach(docSnap => {
+        items.push(docSnap.data() as Post);
+      });
+      items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      onUpdate(items);
+    },
+    error => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  );
+}
+
+export async function createPostDoc(post: Omit<Post, 'id' | 'likesCount' | 'likedBy'>): Promise<Post> {
+  const id = 'post-' + Math.random().toString(36).substring(2, 9);
+  const path = `posts/${id}`;
+  const data: Post = {
+    ...post,
+    id,
+    caption: removeEmojis(post.caption || ''),
+    fileName: removeEmojis(post.fileName || ''),
+    subjectName: removeEmojis(post.subjectName || ''),
+    authorName: removeEmojis(post.authorName),
+    authorUsername: removeEmojis(post.authorUsername || ''),
+    likesCount: 0,
+    likedBy: [],
+  };
+  try {
+    await setDoc(doc(db, 'posts', id), data);
+    return data;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, path);
+  }
+}
+
+export async function toggleLikePostDoc(postId: string, userId: string, currentLikedBy: string[]): Promise<void> {
+  const path = `posts/${postId}`;
+  const alreadyLiked = currentLikedBy.includes(userId);
+  const newLikedBy = alreadyLiked
+    ? currentLikedBy.filter(uid => uid !== userId)
+    : [...currentLikedBy, userId];
+  const newLikesCount = newLikedBy.length;
+
+  try {
+    await updateDoc(doc(db, 'posts', postId), {
+      likedBy: newLikedBy,
+      likesCount: newLikesCount,
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+  }
+}
+
+export async function deletePostDoc(postId: string): Promise<void> {
+  const path = `posts/${postId}`;
+  try {
+    await deleteDoc(doc(db, 'posts', postId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
   }
 }

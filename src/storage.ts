@@ -1,10 +1,11 @@
-import { Subject, Session, Habit, Checkin } from './types';
+import { Subject, Session, Habit, Checkin, Post } from './types';
 
 const STORAGE_KEYS = {
   SUBJECTS: 'dailyflow_subjects',
   SESSIONS: 'dailyflow_sessions',
   HABITS: 'dailyflow_habits',
   CHECKINS: 'dailyflow_checkins',
+  POSTS: 'dailyflow_posts',
 };
 
 export function removeEmojis(str: string): string {
@@ -52,6 +53,38 @@ const DEFAULT_HABITS: Habit[] = [
   { id: 'hab-1', name: 'Morning Deep Work', icon: '', active: true },
   { id: 'hab-2', name: 'Active Recall / Flashcards', icon: '', active: true },
   { id: 'hab-3', name: 'Read 20 Pages', icon: '', active: true },
+];
+
+const DEFAULT_POSTS: Post[] = [
+  {
+    id: 'post-sample-1',
+    userId: 'user-sample-alex',
+    authorName: 'Alex Rivera',
+    authorUsername: 'alex_studies',
+    authorPhoto: '',
+    type: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80',
+    caption: '3 hours of deep calculus problem solving this morning. Goal for the week is 12 hours.',
+    subjectName: 'Mathematics',
+    likesCount: 14,
+    likedBy: [],
+    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+  },
+  {
+    id: 'post-sample-2',
+    userId: 'user-sample-sam',
+    authorName: 'Sam Chen',
+    authorUsername: 'sam_codes',
+    authorPhoto: '',
+    type: 'document',
+    mediaUrl: '',
+    fileName: 'DataStructures_CheatSheet.pdf',
+    caption: 'Sharing my compiled summary notes on Tree Traversals and Graph Search for anyone preparing for midterms.',
+    subjectName: 'Computer Science',
+    likesCount: 28,
+    likedBy: [],
+    createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+  },
 ];
 
 export const storage = {
@@ -163,5 +196,57 @@ export const storage = {
     } catch {
       // ignore
     }
+  },
+
+  getPosts(): Post[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.POSTS);
+      if (data) return JSON.parse(data);
+    } catch {
+      // fallback
+    }
+    this.savePosts(DEFAULT_POSTS);
+    return DEFAULT_POSTS;
+  },
+
+  savePosts(posts: Post[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(posts));
+    } catch {
+      // ignore
+    }
+  },
+
+  createPost(post: Omit<Post, 'id' | 'likesCount' | 'likedBy'>): Post[] {
+    const newPost: Post = {
+      ...post,
+      id: 'post-' + Math.random().toString(36).substring(2, 9),
+      likesCount: 0,
+      likedBy: [],
+    };
+    const updated = [newPost, ...this.getPosts()];
+    this.savePosts(updated);
+    return updated;
+  },
+
+  toggleLikePost(postId: string, userId: string): Post[] {
+    const list = this.getPosts().map(p => {
+      if (p.id !== postId) return p;
+      const already = p.likedBy.includes(userId);
+      const newLikedBy = already ? p.likedBy.filter(u => u !== userId) : [...p.likedBy, userId];
+      return {
+        ...p,
+        likedBy: newLikedBy,
+        likesCount: newLikedBy.length,
+      };
+    });
+    this.savePosts(list);
+    return list;
+  },
+
+  deletePost(postId: string): Post[] {
+    const list = this.getPosts().filter(p => p.id !== postId);
+    this.savePosts(list);
+    return list;
   },
 };

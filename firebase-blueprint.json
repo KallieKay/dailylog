@@ -70,6 +70,27 @@
         "updatedAt": { "type": "string", "maxLength": 50 }
       },
       "required": ["habit_id", "userId", "date", "completed"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Feed post with photo, reel video, or study document shared with circle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "authorUsername": { "type": "string", "maxLength": 50 },
+        "authorPhoto": { "type": "string", "maxLength": 500 },
+        "type": { "type": "string", "enum": ["image", "video", "reel", "document"] },
+        "mediaUrl": { "type": "string" },
+        "fileName": { "type": "string", "maxLength": 150 },
+        "caption": { "type": "string", "maxLength": 1000 },
+        "subjectName": { "type": "string", "maxLength": 100 },
+        "likesCount": { "type": "number" },
+        "likedBy": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "userId", "authorName", "type", "createdAt"]
     }
   },
   "firestore": {
@@ -92,6 +113,10 @@
     "/users/{userId}/checkins/{checkinId}": {
       "schema": "Checkin",
       "description": "User's daily habit checkin logs"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Shared posts, study reels, photos, and documents visible to the circle"
     }
   }
 }
