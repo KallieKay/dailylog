@@ -74,6 +74,18 @@ export const storage = {
     }
   },
 
+  updateSubject(id: string, updates: Partial<Subject>): Subject[] {
+    const list = this.getSubjects().map(s => (s.id === id ? { ...s, ...updates } : s));
+    this.saveSubjects(list);
+    return list;
+  },
+
+  deleteSubject(id: string): Subject[] {
+    const list = this.getSubjects().filter(s => s.id !== id);
+    this.saveSubjects(list);
+    return list;
+  },
+
   getSessions(): Session[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SESSIONS);
@@ -121,6 +133,18 @@ export const storage = {
     } catch {
       // ignore
     }
+  },
+
+  updateHabit(id: string, updates: Partial<Habit>): Habit[] {
+    const list = this.getHabits().map(h => (h.id === id ? { ...h, ...updates } : h));
+    this.saveHabits(list);
+    return list;
+  },
+
+  deleteHabit(id: string): Habit[] {
+    const list = this.getHabits().filter(h => h.id !== id);
+    this.saveHabits(list);
+    return list;
   },
 
   getCheckins(): Checkin[] {
