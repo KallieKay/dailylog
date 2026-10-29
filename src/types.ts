@@ -59,3 +59,13 @@ export interface Post {
   likedBy: string[];
   createdAt: string;
 }
+
+export interface ActiveStudySession {
+  userId: string;
+  displayName: string;
+  username?: string;
+  photoURL?: string;
+  subjectName?: string;
+  startedAt: string;
+  notes?: string;
+}

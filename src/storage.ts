@@ -1,4 +1,4 @@
-import { Subject, Session, Habit, Checkin, Post } from './types';
+import { Subject, Session, Habit, Checkin, Post, ActiveStudySession } from './types';
 
 const STORAGE_KEYS = {
   SUBJECTS: 'dailyflow_subjects',
@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   HABITS: 'dailyflow_habits',
   CHECKINS: 'dailyflow_checkins',
   POSTS: 'dailyflow_posts',
+  ACTIVE_SESSIONS: 'dailyflow_active_sessions',
 };
 
 export function removeEmojis(str: string): string {
@@ -84,6 +85,27 @@ const DEFAULT_POSTS: Post[] = [
     likesCount: 28,
     likedBy: [],
     createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+  },
+];
+
+const DEFAULT_ACTIVE_STUDY_SESSIONS: ActiveStudySession[] = [
+  {
+    userId: 'user-sample-elena',
+    displayName: 'Elena Rostova',
+    username: 'elena_phys',
+    photoURL: '',
+    subjectName: 'Physics & Thermodynamics',
+    startedAt: new Date(Date.now() - 1000 * 60 * 38).toISOString(),
+    notes: 'Problem sets & active recall',
+  },
+  {
+    userId: 'user-sample-marcus',
+    displayName: 'Marcus Vance',
+    username: 'marcus_code',
+    photoURL: '',
+    subjectName: 'Computer Science',
+    startedAt: new Date(Date.now() - 1000 * 60 * 14).toISOString(),
+    notes: 'Algorithms & LeetCode review',
   },
 ];
 
@@ -247,6 +269,37 @@ export const storage = {
   deletePost(postId: string): Post[] {
     const list = this.getPosts().filter(p => p.id !== postId);
     this.savePosts(list);
+    return list;
+  },
+
+  getActiveStudySessions(): ActiveStudySession[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSIONS);
+      if (data) return JSON.parse(data);
+    } catch {
+      // fallback
+    }
+    return DEFAULT_ACTIVE_STUDY_SESSIONS;
+  },
+
+  saveActiveStudySessions(sessions: ActiveStudySession[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_SESSIONS, JSON.stringify(sessions));
+    } catch {
+      // ignore
+    }
+  },
+
+  startActiveStudySession(session: ActiveStudySession): ActiveStudySession[] {
+    const list = this.getActiveStudySessions().filter(s => s.userId !== session.userId);
+    const updated = [session, ...list];
+    this.saveActiveStudySessions(updated);
+    return updated;
+  },
+
+  stopActiveStudySession(userId: string): ActiveStudySession[] {
+    const list = this.getActiveStudySessions().filter(s => s.userId !== userId);
+    this.saveActiveStudySessions(list);
     return list;
   },
 };

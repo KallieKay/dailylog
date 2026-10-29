@@ -9,6 +9,12 @@ export default defineConfig({
     strictPort: true,
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: [
+      'react',
+      'react-dom',
+      'firebase/app',
+      'firebase/auth',
+      'firebase/firestore',
+    ],
   },
 });

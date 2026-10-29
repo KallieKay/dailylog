@@ -21,8 +21,11 @@ import {
   createPostDoc,
   toggleLikePostDoc,
   deletePostDoc,
+  subscribeActiveStudySessions,
+  startActiveStudySessionDoc,
+  stopActiveStudySessionDoc,
 } from './firestoreService';
-import { Subject, Session, Habit, Checkin, UserProfile, Post, PostMediaType } from './types';
+import { Subject, Session, Habit, Checkin, UserProfile, Post, PostMediaType, ActiveStudySession } from './types';
 import { storage, today, getWeekDates, removeEmojis } from './storage';
 
 export default function App() {
@@ -44,6 +47,13 @@ export default function App() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [activeStudySessions, setActiveStudySessions] = useState<ActiveStudySession[]>([]);
+
+  // Live Study Session States
+  const [isStartStudyModalOpen, setIsStartStudyModalOpen] = useState(false);
+  const [studySubjectChoice, setStudySubjectChoice] = useState('');
+  const [studyFocusNote, setStudyFocusNote] = useState('');
+  const [elapsedStudySeconds, setElapsedStudySeconds] = useState(0);
 
   // Subject Edit state
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
@@ -122,7 +132,11 @@ export default function App() {
           // Attach realtime Firestore listeners for personal data
           unsubs.push(
             subscribeSubjects(currentUser.uid, firestoreSubjects => {
-              setSubjects(firestoreSubjects);
+              if (firestoreSubjects && firestoreSubjects.length > 0) {
+                setSubjects(firestoreSubjects);
+              } else {
+                setSubjects(prev => (prev.length > 0 ? prev : storage.getSubjects()));
+              }
             })
           );
           unsubs.push(
@@ -132,7 +146,11 @@ export default function App() {
           );
           unsubs.push(
             subscribeHabits(currentUser.uid, firestoreHabits => {
-              setHabits(firestoreHabits);
+              if (firestoreHabits && firestoreHabits.length > 0) {
+                setHabits(firestoreHabits);
+              } else {
+                setHabits(prev => (prev.length > 0 ? prev : storage.getHabits()));
+              }
             })
           );
           unsubs.push(
@@ -143,7 +161,21 @@ export default function App() {
           // Circle feed listener
           unsubs.push(
             subscribePosts(firestorePosts => {
-              setPosts(firestorePosts);
+              if (firestorePosts && firestorePosts.length > 0) {
+                setPosts(firestorePosts);
+              } else {
+                setPosts(prev => (prev.length > 0 ? prev : storage.getPosts()));
+              }
+            })
+          );
+          // Active Study Sessions listener (Live Circle Presence)
+          unsubs.push(
+            subscribeActiveStudySessions(liveSessions => {
+              if (liveSessions && liveSessions.length > 0) {
+                setActiveStudySessions(liveSessions);
+              } else {
+                setActiveStudySessions(prev => (prev.length > 0 ? prev : storage.getActiveStudySessions()));
+              }
             })
           );
         } catch (err: unknown) {
@@ -158,6 +190,7 @@ export default function App() {
         setHabits(storage.getHabits());
         setCheckins(storage.getCheckins());
         setPosts(storage.getPosts());
+        setActiveStudySessions(storage.getActiveStudySessions());
       }
     });
 
@@ -174,6 +207,36 @@ export default function App() {
     }
   }, [subjects, sessionSubjectId]);
 
+  // Current user's active live study session
+  const currentUserId = user ? user.uid : 'guest-user';
+  const myActiveSession = activeStudySessions.find(s => s.userId === currentUserId);
+
+  // Live timer interval effect
+  useEffect(() => {
+    if (!myActiveSession) {
+      setElapsedStudySeconds(0);
+      return;
+    }
+    const updateElapsed = () => {
+      const started = new Date(myActiveSession.startedAt).getTime();
+      const diff = Math.max(0, Math.floor((Date.now() - started) / 1000));
+      setElapsedStudySeconds(diff);
+    };
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+    return () => clearInterval(interval);
+  }, [myActiveSession]);
+
+  const formatTimer = (totalSecs: number) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    if (hrs > 0) {
+      return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
   // Auth Handlers
   const handleGoogleLogin = async () => {
     try {
@@ -188,6 +251,9 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
+      if (myActiveSession) {
+        await handleEndStudySession();
+      }
       await logout();
       showToast('Signed out');
     } catch (err: unknown) {
@@ -213,6 +279,124 @@ export default function App() {
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       showToast('Failed to update profile: ' + errMsg, true);
+    }
+  };
+
+  // ================= LIVE STUDY SESSION HANDLERS =================
+  const handleStartStudySession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const currentSubjectName = studySubjectChoice || (subjects[0]?.name ?? 'General Study');
+    const authorName = user ? (profile?.displayName || user.displayName || 'Scholar') : 'Guest Scholar';
+    const authorUsername = user ? (profile?.username || 'scholar') : 'guest';
+    const authorPhoto = user ? (profile?.photoURL || '') : '';
+
+    const newActive: ActiveStudySession = {
+      userId: currentUserId,
+      displayName: authorName,
+      username: authorUsername,
+      photoURL: authorPhoto,
+      subjectName: currentSubjectName,
+      startedAt: new Date().toISOString(),
+      notes: removeEmojis(studyFocusNote.trim()),
+    };
+
+    if (user) {
+      try {
+        await startActiveStudySessionDoc(newActive);
+        setIsStartStudyModalOpen(false);
+        setStudyFocusNote('');
+        showToast('Study session started! You are now live.');
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        showToast('Error starting session: ' + errMsg, true);
+      }
+    } else {
+      const updated = storage.startActiveStudySession(newActive);
+      setActiveStudySessions(updated);
+      setIsStartStudyModalOpen(false);
+      setStudyFocusNote('');
+      showToast('Study session started! You are now live.');
+    }
+  };
+
+  const handleEndStudySession = async () => {
+    const active = activeStudySessions.find(s => s.userId === currentUserId);
+    if (!active) return;
+
+    // Calculate actual elapsed minutes (minimum 1 minute)
+    const elapsedMins = Math.max(1, Math.round(elapsedStudySeconds / 60));
+
+    // Ensure matching subject exists
+    let matchingSubject = subjects.find(s => s.name === active.subjectName);
+    let subjectId = matchingSubject?.id;
+
+    if (!subjectId) {
+      if (subjects.length > 0) {
+        subjectId = subjects[0].id;
+        matchingSubject = subjects[0];
+      } else {
+        const fallbackName = active.subjectName || 'General Study';
+        if (user) {
+          const created = await addSubjectDoc(user.uid, {
+            name: fallbackName,
+            goal_hours_per_week: 5,
+            color: '#3b82f6',
+          });
+          subjectId = created.id;
+          matchingSubject = created;
+          setSubjects(prev => [...prev, created]);
+        } else {
+          const localSub: Subject = {
+            id: 'sub-' + Math.random().toString(36).substring(2, 9),
+            name: fallbackName,
+            goal_hours_per_week: 5,
+            color: '#3b82f6',
+          };
+          subjectId = localSub.id;
+          matchingSubject = localSub;
+          const updatedSubs = [...subjects, localSub];
+          setSubjects(updatedSubs);
+          storage.saveSubjects(updatedSubs);
+        }
+      }
+    }
+
+    const todayDate = today();
+    const sessionNote = active.notes ? `${active.notes} (Live Study)` : 'Live study session';
+    const newSessionId = 'sess-' + Math.random().toString(36).substring(2, 9);
+
+    const sessionData: Session = {
+      id: newSessionId,
+      userId: currentUserId,
+      subject_id: subjectId,
+      duration_min: elapsedMins,
+      notes: sessionNote,
+      date: todayDate,
+      created_at: new Date().toISOString(),
+    };
+
+    // Optimistically update sessions so it appears under Today's Sessions immediately
+    setSessions(prev => [sessionData, ...prev.filter(s => s.id !== newSessionId)]);
+    storage.saveSessions([sessionData, ...sessions.filter(s => s.id !== newSessionId)]);
+
+    if (user) {
+      try {
+        await stopActiveStudySessionDoc(currentUserId);
+        await addSessionDoc(user.uid, {
+          subject_id: subjectId,
+          duration_min: elapsedMins,
+          notes: sessionNote,
+          date: todayDate,
+        });
+        showToast(`Live session ended: ${elapsedMins} min recorded under Today's Sessions!`);
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        showToast('Error ending session: ' + errMsg, true);
+      }
+    } else {
+      const updatedLive = storage.stopActiveStudySession(currentUserId);
+      setActiveStudySessions(updatedLive);
+      showToast(`Live session ended: ${elapsedMins} min recorded under Today's Sessions!`);
     }
   };
 
@@ -468,16 +652,16 @@ export default function App() {
   };
 
   const handleToggleLike = async (post: Post) => {
-    const currentUserId = user ? user.uid : 'guest-user';
+    const activeUid = user ? user.uid : 'guest-user';
     if (user) {
       try {
-        await toggleLikePostDoc(post.id, currentUserId, post.likedBy || []);
+        await toggleLikePostDoc(post.id, activeUid, post.likedBy || []);
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
         showToast('Failed to like post: ' + errMsg, true);
       }
     } else {
-      const updated = storage.toggleLikePost(post.id, currentUserId);
+      const updated = storage.toggleLikePost(post.id, activeUid);
       setPosts(updated);
     }
   };
@@ -620,6 +804,24 @@ export default function App() {
     }
   }
 
+  // Automated Analytics Calculations
+  const totalWeeklyGoalHours = subjects.reduce((sum, s) => sum + (s.goal_hours_per_week || 0), 0);
+  const totalWeekHours = totalWeekMins / 60;
+  const studyGoalPercentage = totalWeeklyGoalHours > 0
+    ? Math.min(100, Math.round((totalWeekHours / totalWeeklyGoalHours) * 100))
+    : (totalWeekHours > 0 ? 100 : 0);
+
+  const activeHabits = habits.filter(h => h.active !== false);
+  const totalWeeklyExpectedCheckins = activeHabits.length * 7;
+  const totalWeekCheckinsDone = Object.values(habitWeekCounts).reduce((a, b) => a + b, 0);
+  const habitGoalPercentage = totalWeeklyExpectedCheckins > 0
+    ? Math.min(100, Math.round((totalWeekCheckinsDone / totalWeeklyExpectedCheckins) * 100))
+    : (totalWeekCheckinsDone > 0 ? 100 : 0);
+
+  const currentDayOfWeek = new Date().getDay() || 7;
+  const expectedPacePct = Math.round((currentDayOfWeek / 7) * 100);
+  const paceLabel = studyGoalPercentage >= expectedPacePct ? 'Ahead of Pace' : 'In Progress';
+
   const userInitial = profile?.displayName ? profile.displayName.charAt(0).toUpperCase() : 'S';
 
   const formatTimeAgo = (isoDate: string) => {
@@ -724,6 +926,38 @@ export default function App() {
                   <span className="stat-label">Posts</span>
                 </div>
               </div>
+
+              {/* Automated Weekly Analytics Section */}
+              <div className="profile-analytics">
+                <div className="analytics-header">
+                  <span className="analytics-tag">Weekly Analytics</span>
+                  <span className="analytics-pace">{paceLabel}</span>
+                </div>
+                <p className="analytics-sentence">
+                  @{profile.username || 'scholar'} has achieved {studyGoalPercentage}% of their study goals and {habitGoalPercentage}% of their habit goals this week.
+                </p>
+                <div className="analytics-bars">
+                  <div className="analytics-bar-item">
+                    <div className="bar-meta">
+                      <span>Study Goals</span>
+                      <span><strong>{totalWeekHours.toFixed(1)}h</strong> / {totalWeeklyGoalHours}h ({studyGoalPercentage}%)</span>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill study" style={{ width: `${Math.min(100, studyGoalPercentage)}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="analytics-bar-item">
+                    <div className="bar-meta">
+                      <span>Habit Goals</span>
+                      <span><strong>{totalWeekCheckinsDone}</strong> / {totalWeeklyExpectedCheckins} check-ins ({habitGoalPercentage}%)</span>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill habit" style={{ width: `${Math.min(100, habitGoalPercentage)}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -763,6 +997,111 @@ export default function App() {
         {/* TAB 1: TRACKER */}
         {activeTab === 'tracker' && (
           <>
+            {/* Live Study Session Presence Banner */}
+            <div className="live-study-panel">
+              <div className="live-study-header">
+                <div>
+                  <div className="live-badge-row">
+                    <span className="live-indicator-dot" />
+                    <span className="live-tag">Live Study Room</span>
+                  </div>
+                  <h2 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.25rem', textTransform: 'none' }}>
+                    {myActiveSession ? `Currently Studying: ${myActiveSession.subjectName || 'Study Session'}` : 'Ready to Focus?'}
+                  </h2>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
+                    {myActiveSession
+                      ? (myActiveSession.notes ? `Goal: "${myActiveSession.notes}"` : 'Your circle can see that you are currently studying.')
+                      : 'Show your circle that you are studying right now and track your live focus time together.'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  {myActiveSession && (
+                    <div className="live-timer-display">
+                      {formatTimer(elapsedStudySeconds)}
+                    </div>
+                  )}
+
+                  {myActiveSession ? (
+                    <button
+                      type="button"
+                      className="btn-end-study"
+                      onClick={handleEndStudySession}
+                    >
+                      End & Log Session
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-start-study"
+                      onClick={() => {
+                        setStudySubjectChoice(subjects[0]?.name || '');
+                        setIsStartStudyModalOpen(true);
+                      }}
+                    >
+                      <span className="live-indicator-dot" style={{ background: '#ffffff', boxShadow: 'none' }} />
+                      Start Study Session
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Members in Study Section */}
+            <section className="members-study-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h2 style={{ margin: 0 }}>Members in Study</h2>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#15803d', background: '#dcfce7', padding: '0.2rem 0.65rem', borderRadius: '999px' }}>
+                  {activeStudySessions.length} studying now
+                </span>
+              </div>
+
+              <div className="members-study-grid">
+                {activeStudySessions.length === 0 ? (
+                  <div className="empty" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem 1rem' }}>
+                    No circle members are currently live. Click "Start Study Session" above to lead the flow!
+                  </div>
+                ) : (
+                  activeStudySessions.map(member => {
+                    const isMe = member.userId === currentUserId;
+                    const memberInitial = member.displayName ? member.displayName.charAt(0).toUpperCase() : 'S';
+                    return (
+                      <div key={member.userId} className={`member-study-card ${isMe ? 'self-studying' : ''}`}>
+                        <div className="studying-avatar-box">
+                          {member.photoURL ? (
+                            <img src={member.photoURL} alt={member.displayName} className="studying-avatar" />
+                          ) : (
+                            <div className="studying-avatar">{memberInitial}</div>
+                          )}
+                          <span className="studying-avatar-dot" />
+                        </div>
+
+                        <div className="member-study-info">
+                          <div className="member-study-name">
+                            {member.displayName} {isMe ? '(You)' : ''}
+                          </div>
+                          <div className="member-study-handle">
+                            @{member.username || 'scholar'}
+                          </div>
+                          <div className="member-study-subject">
+                            Studying {member.subjectName || 'Study Session'}
+                          </div>
+                          {member.notes && (
+                            <div className="member-study-note">
+                              "{member.notes}"
+                            </div>
+                          )}
+                          <div className="member-study-time">
+                            Started {formatTimeAgo(member.startedAt)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+
             {/* Subjects Section with full CRUD */}
             <section id="subjects-section">
               <h2>Subjects</h2>
@@ -1093,8 +1432,8 @@ export default function App() {
               </div>
             ) : (
               posts.map(post => {
-                const currentUserId = user ? user.uid : 'guest-user';
-                const isLiked = post.likedBy?.includes(currentUserId);
+                const activeUid = user ? user.uid : 'guest-user';
+                const isLiked = post.likedBy?.includes(activeUid);
                 const isAuthor = user ? post.userId === user.uid : true;
 
                 return (
@@ -1207,6 +1546,58 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Start Live Study Session Modal */}
+      {isStartStudyModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsStartStudyModalOpen(false)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <h3>Start Live Study Session</h3>
+            <p className="modal-desc">
+              Your status will be set to currently studying, and members in your circle will see your live session.
+            </p>
+            <form onSubmit={handleStartStudySession}>
+              <div className="form-group">
+                <label>Subject to Study</label>
+                <select
+                  value={studySubjectChoice}
+                  onChange={e => setStudySubjectChoice(e.target.value)}
+                  required
+                >
+                  {subjects.length === 0 && <option value="General Study">General Study</option>}
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Current Study Goal or Focus (Optional)</label>
+                <input
+                  value={studyFocusNote}
+                  onChange={e => setStudyFocusNote(e.target.value)}
+                  placeholder="e.g. Chapter 4 problem set, writing draft, flashcards..."
+                  maxLength={100}
+                />
+              </div>
+
+              <div className="modal-buttons">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setIsStartStudyModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-start-study">
+                  Go Live & Study
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Create Post / Reel / Doc Modal */}
       {isCreatePostOpen && (

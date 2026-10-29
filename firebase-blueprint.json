@@ -91,6 +91,21 @@
         "createdAt": { "type": "string", "maxLength": 50 }
       },
       "required": ["id", "userId", "authorName", "type", "createdAt"]
+    },
+    "ActiveStudySession": {
+      "title": "ActiveStudySession",
+      "description": "Real-time presence indicating a user currently in an active study session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 50 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "subjectName": { "type": "string", "maxLength": 100 },
+        "startedAt": { "type": "string", "maxLength": 50 },
+        "notes": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["userId", "displayName", "startedAt"]
     }
   },
   "firestore": {
@@ -117,6 +132,10 @@
     "/posts/{postId}": {
       "schema": "Post",
       "description": "Shared posts, study reels, photos, and documents visible to the circle"
+    },
+    "/activeStudySessions/{userId}": {
+      "schema": "ActiveStudySession",
+      "description": "Live active study session indicator for circle members"
     }
   }
 }

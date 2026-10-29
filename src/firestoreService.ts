@@ -11,12 +11,27 @@ import {
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { UserProfile, Subject, Session, Habit, Checkin, Post } from './types';
+import { UserProfile, Subject, Session, Habit, Checkin, Post, ActiveStudySession } from './types';
 import { removeEmojis } from './storage';
 
 // Profile management
 export async function ensureUserProfile(user: User): Promise<UserProfile> {
   const path = `users/${user.uid}`;
+  const defaultUsername = (user.email ? user.email.split('@')[0] : 'study_' + user.uid.substring(0, 5))
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+    .slice(0, 30);
+
+  const profile: UserProfile = {
+    userId: user.uid,
+    email: user.email || '',
+    displayName: removeEmojis(user.displayName || 'Flow Scholar'),
+    username: defaultUsername || 'scholar',
+    photoURL: user.photoURL || '',
+    bio: 'Documenting daily study flow & habit streaks',
+    createdAt: new Date().toISOString(),
+  };
+
   try {
     const userRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userRef);
@@ -24,25 +39,16 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
       return snap.data() as UserProfile;
     }
 
-    const defaultUsername = (user.email ? user.email.split('@')[0] : 'study_' + user.uid.substring(0, 5))
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, '')
-      .slice(0, 30);
-
-    const profile: UserProfile = {
-      userId: user.uid,
-      email: user.email || '',
-      displayName: removeEmojis(user.displayName || 'Flow Scholar'),
-      username: defaultUsername || 'scholar',
-      photoURL: user.photoURL || '',
-      bio: 'Documenting daily study flow & habit streaks',
-      createdAt: new Date().toISOString(),
-    };
-
     await setDoc(userRef, profile);
     return profile;
-  } catch (err) {
+  } catch (err: unknown) {
+    const errStr = String(err);
+    if (errStr.includes('offline') || errStr.includes('auth token') || errStr.includes('token-service')) {
+      console.warn('Firestore is temporarily offline or propagating auth tokens. Using local profile session.', err);
+      return profile;
+    }
     handleFirestoreError(err, OperationType.WRITE, path);
+    return profile;
   }
 }
 
@@ -87,10 +93,10 @@ export async function addSubjectDoc(userId: string, subject: Omit<Subject, 'id' 
   };
   try {
     await setDoc(doc(db, 'users', userId, 'subjects', id), data);
-    return data;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
+  return data;
 }
 
 export async function updateSubjectDoc(
@@ -156,10 +162,10 @@ export async function addSessionDoc(
   };
   try {
     await setDoc(doc(db, 'users', userId, 'sessions', id), data);
-    return data;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
+  return data;
 }
 
 export function subscribeHabits(userId: string, onUpdate: (habits: Habit[]) => void): Unsubscribe {
@@ -192,10 +198,10 @@ export async function addHabitDoc(userId: string, habit: Omit<Habit, 'id' | 'use
   };
   try {
     await setDoc(doc(db, 'users', userId, 'habits', id), data);
-    return data;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
+  return data;
 }
 
 export async function updateHabitDoc(
@@ -301,10 +307,10 @@ export async function createPostDoc(post: Omit<Post, 'id' | 'likesCount' | 'like
   };
   try {
     await setDoc(doc(db, 'posts', id), data);
-    return data;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
+  return data;
 }
 
 export async function toggleLikePostDoc(postId: string, userId: string, currentLikedBy: string[]): Promise<void> {
@@ -329,6 +335,53 @@ export async function deletePostDoc(postId: string): Promise<void> {
   const path = `posts/${postId}`;
   try {
     await deleteDoc(doc(db, 'posts', postId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
+// ================= LIVE ACTIVE STUDY SESSIONS =================
+export function subscribeActiveStudySessions(onUpdate: (sessions: ActiveStudySession[]) => void): Unsubscribe {
+  const path = 'activeStudySessions';
+  const q = query(collection(db, 'activeStudySessions'));
+  return onSnapshot(
+    q,
+    snapshot => {
+      const items: ActiveStudySession[] = [];
+      snapshot.forEach(docSnap => {
+        items.push(docSnap.data() as ActiveStudySession);
+      });
+      items.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+      onUpdate(items);
+    },
+    error => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  );
+}
+
+export async function startActiveStudySessionDoc(session: ActiveStudySession): Promise<void> {
+  const path = `activeStudySessions/${session.userId}`;
+  const data: ActiveStudySession = {
+    userId: session.userId,
+    displayName: removeEmojis(session.displayName),
+    username: removeEmojis(session.username || ''),
+    photoURL: session.photoURL || '',
+    subjectName: removeEmojis(session.subjectName || ''),
+    startedAt: session.startedAt,
+    notes: removeEmojis(session.notes || ''),
+  };
+  try {
+    await setDoc(doc(db, 'activeStudySessions', session.userId), data);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+export async function stopActiveStudySessionDoc(userId: string): Promise<void> {
+  const path = `activeStudySessions/${userId}`;
+  try {
+    await deleteDoc(doc(db, 'activeStudySessions', userId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
   }
