@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { UserProfile, Subject, Session, Habit, Checkin, Post, ActiveStudySession } from './types';
+import { UserProfile, Subject, Session, Habit, Checkin, Post, ActiveStudySession, StudyBuddy } from './types';
 import { removeEmojis } from './storage';
 
 // Profile management
@@ -382,6 +382,57 @@ export async function stopActiveStudySessionDoc(userId: string): Promise<void> {
   const path = `activeStudySessions/${userId}`;
   try {
     await deleteDoc(doc(db, 'activeStudySessions', userId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
+// ================= STUDY BUDDIES =================
+export function subscribeBuddies(userId: string, onUpdate: (buddies: StudyBuddy[]) => void): Unsubscribe {
+  const path = `users/${userId}/buddies`;
+  const q = query(collection(db, 'users', userId, 'buddies'));
+  return onSnapshot(
+    q,
+    snapshot => {
+      const items: StudyBuddy[] = [];
+      snapshot.forEach(docSnap => {
+        items.push(docSnap.data() as StudyBuddy);
+      });
+      items.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+      onUpdate(items);
+    },
+    error => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  );
+}
+
+export async function addBuddyDoc(
+  userId: string,
+  buddy: { buddyUserId: string; buddyName: string; buddyUsername?: string; buddyPhotoURL?: string }
+): Promise<StudyBuddy> {
+  const path = `users/${userId}/buddies/${buddy.buddyUserId}`;
+  const data: StudyBuddy = {
+    id: buddy.buddyUserId,
+    userId,
+    buddyUserId: buddy.buddyUserId,
+    buddyName: removeEmojis(buddy.buddyName),
+    buddyUsername: removeEmojis(buddy.buddyUsername || ''),
+    buddyPhotoURL: buddy.buddyPhotoURL || '',
+    addedAt: new Date().toISOString(),
+  };
+  try {
+    await setDoc(doc(db, 'users', userId, 'buddies', buddy.buddyUserId), data);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+  return data;
+}
+
+export async function removeBuddyDoc(userId: string, buddyUserId: string): Promise<void> {
+  const path = `users/${userId}/buddies/${buddyUserId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'buddies', buddyUserId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
   }

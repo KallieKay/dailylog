@@ -99,6 +99,17 @@ service cloud.firestore {
         && (!('notes' in data) || (data.notes is string && data.notes.size() <= 200));
     }
 
+    // Validation for Study Buddy
+    function isValidBuddy(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.buddyUserId is string && data.buddyUserId.size() <= 128
+        && data.buddyName is string && data.buddyName.size() > 0 && data.buddyName.size() <= 100
+        && data.addedAt is string && data.addedAt.size() <= 50
+        && (!('buddyUsername' in data) || (data.buddyUsername is string && data.buddyUsername.size() <= 50))
+        && (!('buddyPhotoURL' in data) || (data.buddyPhotoURL is string && data.buddyPhotoURL.size() <= 500));
+    }
+
     // User profiles
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -140,6 +151,15 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidId(checkinId) && isValidCheckin(incoming());
         allow update: if isOwner(userId) && isValidCheckin(incoming())
           && incoming().habit_id == existing().habit_id && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId);
+      }
+
+      // User's Study Buddies
+      match /buddies/{buddyId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(buddyId) && isValidBuddy(incoming());
+        allow update: if isOwner(userId) && isValidBuddy(incoming())
+          && incoming().userId == existing().userId;
         allow delete: if isOwner(userId);
       }
     }

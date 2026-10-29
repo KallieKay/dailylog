@@ -1,4 +1,4 @@
-import { Subject, Session, Habit, Checkin, Post, ActiveStudySession } from './types';
+import { Subject, Session, Habit, Checkin, Post, ActiveStudySession, StudyBuddy } from './types';
 
 const STORAGE_KEYS = {
   SUBJECTS: 'dailyflow_subjects',
@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   CHECKINS: 'dailyflow_checkins',
   POSTS: 'dailyflow_posts',
   ACTIVE_SESSIONS: 'dailyflow_active_sessions',
+  BUDDIES: 'dailyflow_buddies',
 };
 
 export function removeEmojis(str: string): string {
@@ -109,6 +110,94 @@ const DEFAULT_ACTIVE_STUDY_SESSIONS: ActiveStudySession[] = [
   },
 ];
 
+const DEFAULT_BUDDIES: StudyBuddy[] = [
+  {
+    id: 'user-sample-alex',
+    userId: 'guest-user',
+    buddyUserId: 'user-sample-alex',
+    buddyName: 'Alex Rivera',
+    buddyUsername: 'alex_studies',
+    buddyPhotoURL: '',
+    addedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+  },
+  {
+    id: 'user-sample-elena',
+    userId: 'guest-user',
+    buddyUserId: 'user-sample-elena',
+    buddyName: 'Elena Rostova',
+    buddyUsername: 'elena_phys',
+    buddyPhotoURL: '',
+    addedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+  },
+];
+
+function getDefaultSessions(): Session[] {
+  const { days } = getWeekDates();
+  const d0 = days[0] || today();
+  const d1 = days[1] || today();
+  const d2 = days[2] || today();
+  const d3 = days[3] || today();
+
+  return [
+    {
+      id: 'sess-def-1',
+      userId: 'guest-user',
+      subject_id: 'sub-2',
+      duration_min: 360,
+      notes: 'Distributed cloud systems and microservices architecture',
+      date: d0,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'sess-def-2',
+      userId: 'guest-user',
+      subject_id: 'sub-1',
+      duration_min: 300,
+      notes: 'Linear algebra, matrix proofs, and problem sets',
+      date: d1,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'sess-def-3',
+      userId: 'guest-user',
+      subject_id: 'sub-3',
+      duration_min: 240,
+      notes: 'Technical research documentation and systems analysis',
+      date: d2,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'sess-def-4',
+      userId: 'guest-user',
+      subject_id: 'sub-2',
+      duration_min: 364,
+      notes: 'DynamoDB data modeling and AWS Lambda event triggers',
+      date: d3,
+      created_at: new Date().toISOString(),
+    },
+  ];
+}
+
+function getDefaultCheckins(): Checkin[] {
+  const { days } = getWeekDates();
+  const d0 = days[0] || today();
+  const d1 = days[1] || today();
+  const d2 = days[2] || today();
+  const d3 = days[3] || today();
+  const d4 = days[4] || today();
+
+  return [
+    { habit_id: 'hab-1', date: d0, completed: true },
+    { habit_id: 'hab-2', date: d0, completed: true },
+    { habit_id: 'hab-1', date: d1, completed: true },
+    { habit_id: 'hab-3', date: d1, completed: true },
+    { habit_id: 'hab-2', date: d2, completed: true },
+    { habit_id: 'hab-1', date: d3, completed: true },
+    { habit_id: 'hab-3', date: d3, completed: true },
+    { habit_id: 'hab-2', date: d4, completed: true },
+  ];
+}
+
 export const storage = {
   getSubjects(): Subject[] {
     try {
@@ -148,7 +237,9 @@ export const storage = {
     } catch {
       // fallback
     }
-    return [];
+    const def = getDefaultSessions();
+    this.saveSessions(def);
+    return def;
   },
 
   saveSessions(sessions: Session[]): void {
@@ -209,7 +300,9 @@ export const storage = {
     } catch {
       // fallback
     }
-    return [];
+    const def = getDefaultCheckins();
+    this.saveCheckins(def);
+    return def;
   },
 
   saveCheckins(checkins: Checkin[]): void {
@@ -301,5 +394,47 @@ export const storage = {
     const list = this.getActiveStudySessions().filter(s => s.userId !== userId);
     this.saveActiveStudySessions(list);
     return list;
+  },
+
+  getBuddies(): StudyBuddy[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.BUDDIES);
+      if (data) return JSON.parse(data);
+    } catch {
+      // fallback
+    }
+    this.saveBuddies(DEFAULT_BUDDIES);
+    return DEFAULT_BUDDIES;
+  },
+
+  saveBuddies(buddies: StudyBuddy[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.BUDDIES, JSON.stringify(buddies));
+    } catch {
+      // ignore
+    }
+  },
+
+  addBuddy(buddy: { buddyUserId: string; buddyName: string; buddyUsername?: string; buddyPhotoURL?: string }): StudyBuddy[] {
+    const existing = this.getBuddies();
+    if (existing.some(b => b.buddyUserId === buddy.buddyUserId)) return existing;
+    const newBuddy: StudyBuddy = {
+      id: buddy.buddyUserId,
+      userId: 'guest-user',
+      buddyUserId: buddy.buddyUserId,
+      buddyName: removeEmojis(buddy.buddyName),
+      buddyUsername: removeEmojis(buddy.buddyUsername || ''),
+      buddyPhotoURL: buddy.buddyPhotoURL || '',
+      addedAt: new Date().toISOString(),
+    };
+    const updated = [newBuddy, ...existing];
+    this.saveBuddies(updated);
+    return updated;
+  },
+
+  removeBuddy(buddyUserId: string): StudyBuddy[] {
+    const updated = this.getBuddies().filter(b => b.buddyUserId !== buddyUserId);
+    this.saveBuddies(updated);
+    return updated;
   },
 };

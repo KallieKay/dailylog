@@ -69,3 +69,13 @@ export interface ActiveStudySession {
   startedAt: string;
   notes?: string;
 }
+
+export interface StudyBuddy {
+  id: string;
+  userId: string;
+  buddyUserId: string;
+  buddyName: string;
+  buddyUsername?: string;
+  buddyPhotoURL?: string;
+  addedAt: string;
+}

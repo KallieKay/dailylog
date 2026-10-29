@@ -106,6 +106,21 @@
         "notes": { "type": "string", "maxLength": 200 }
       },
       "required": ["userId", "displayName", "startedAt"]
+    },
+    "StudyBuddy": {
+      "title": "StudyBuddy",
+      "description": "A study buddy connection in a user's circle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "buddyUserId": { "type": "string", "maxLength": 128 },
+        "buddyName": { "type": "string", "maxLength": 100 },
+        "buddyUsername": { "type": "string", "maxLength": 50 },
+        "buddyPhotoURL": { "type": "string", "maxLength": 500 },
+        "addedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "userId", "buddyUserId", "buddyName", "addedAt"]
     }
   },
   "firestore": {
@@ -128,6 +143,10 @@
     "/users/{userId}/checkins/{checkinId}": {
       "schema": "Checkin",
       "description": "User's daily habit checkin logs"
+    },
+    "/users/{userId}/buddies/{buddyId}": {
+      "schema": "StudyBuddy",
+      "description": "User's study buddies and connections in their circle"
     },
     "/posts/{postId}": {
       "schema": "Post",

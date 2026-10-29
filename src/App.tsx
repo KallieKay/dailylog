@@ -24,8 +24,11 @@ import {
   subscribeActiveStudySessions,
   startActiveStudySessionDoc,
   stopActiveStudySessionDoc,
+  subscribeBuddies,
+  addBuddyDoc,
+  removeBuddyDoc,
 } from './firestoreService';
-import { Subject, Session, Habit, Checkin, UserProfile, Post, PostMediaType, ActiveStudySession } from './types';
+import { Subject, Session, Habit, Checkin, UserProfile, Post, PostMediaType, ActiveStudySession, StudyBuddy } from './types';
 import { storage, today, getWeekDates, removeEmojis } from './storage';
 
 export default function App() {
@@ -48,6 +51,7 @@ export default function App() {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [activeStudySessions, setActiveStudySessions] = useState<ActiveStudySession[]>([]);
+  const [buddies, setBuddies] = useState<StudyBuddy[]>([]);
 
   // Live Study Session States
   const [isStartStudyModalOpen, setIsStartStudyModalOpen] = useState(false);
@@ -178,6 +182,16 @@ export default function App() {
               }
             })
           );
+          // Study Buddies listener
+          unsubs.push(
+            subscribeBuddies(currentUser.uid, firestoreBuddies => {
+              if (firestoreBuddies && firestoreBuddies.length > 0) {
+                setBuddies(firestoreBuddies);
+              } else {
+                setBuddies(prev => (prev.length > 0 ? prev : storage.getBuddies()));
+              }
+            })
+          );
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
           showToast('Failed to load cloud profile: ' + errMsg, true);
@@ -191,6 +205,7 @@ export default function App() {
         setCheckins(storage.getCheckins());
         setPosts(storage.getPosts());
         setActiveStudySessions(storage.getActiveStudySessions());
+        setBuddies(storage.getBuddies());
       }
     });
 
@@ -264,21 +279,82 @@ export default function App() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !profile) return;
     const cleanUsername = removeEmojis(editUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')).slice(0, 30);
     const cleanBio = removeEmojis(editBio.trim()).slice(0, 250);
 
-    try {
-      await updateUserProfile(user.uid, {
-        username: cleanUsername,
-        bio: cleanBio,
+    if (user && profile) {
+      try {
+        await updateUserProfile(user.uid, {
+          username: cleanUsername,
+          bio: cleanBio,
+        });
+        setProfile(prev => (prev ? { ...prev, username: cleanUsername, bio: cleanBio } : null));
+        setIsEditingProfile(false);
+        showToast('Profile updated');
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        showToast('Failed to update profile: ' + errMsg, true);
+      }
+    } else {
+      setProfile({
+        uid: 'guest-scholar',
+        displayName: 'Scholar (Guest)',
+        username: cleanUsername || 'scholar',
+        bio: cleanBio || 'Computer Science and Mathematics student. Building daily habits and learning in public.',
+        photoURL: '',
+        updatedAt: new Date().toISOString(),
       });
-      setProfile(prev => (prev ? { ...prev, username: cleanUsername, bio: cleanBio } : null));
       setIsEditingProfile(false);
       showToast('Profile updated');
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      showToast('Failed to update profile: ' + errMsg, true);
+    }
+  };
+
+  // ================= STUDY BUDDIES HANDLER =================
+  const handleToggleBuddy = async (buddyUser: {
+    userId: string;
+    displayName: string;
+    username?: string;
+    photoURL?: string;
+  }) => {
+    if (!buddyUser.userId || (user && buddyUser.userId === user.uid)) return;
+
+    const isAlreadyBuddy = buddies.some(b => b.buddyUserId === buddyUser.userId);
+
+    if (user) {
+      try {
+        if (isAlreadyBuddy) {
+          await removeBuddyDoc(user.uid, buddyUser.userId);
+          setBuddies(prev => prev.filter(b => b.buddyUserId !== buddyUser.userId));
+          showToast(`Removed ${buddyUser.displayName} from your study buddies`);
+        } else {
+          const newBuddy = await addBuddyDoc(user.uid, {
+            buddyUserId: buddyUser.userId,
+            buddyName: buddyUser.displayName,
+            buddyUsername: buddyUser.username || '',
+            buddyPhotoURL: buddyUser.photoURL || '',
+          });
+          setBuddies(prev => [newBuddy, ...prev.filter(b => b.buddyUserId !== buddyUser.userId)]);
+          showToast(`Added ${buddyUser.displayName} to your study buddies!`);
+        }
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        showToast('Error updating buddy: ' + errMsg, true);
+      }
+    } else {
+      if (isAlreadyBuddy) {
+        const updated = storage.removeBuddy(buddyUser.userId);
+        setBuddies(updated);
+        showToast(`Removed ${buddyUser.displayName} from your study buddies`);
+      } else {
+        const updated = storage.addBuddy({
+          buddyUserId: buddyUser.userId,
+          buddyName: buddyUser.displayName,
+          buddyUsername: buddyUser.username || '',
+          buddyPhotoURL: buddyUser.photoURL || '',
+        });
+        setBuddies(updated);
+        showToast(`Added ${buddyUser.displayName} to your study buddies!`);
+      }
     }
   };
 
@@ -822,7 +898,17 @@ export default function App() {
   const expectedPacePct = Math.round((currentDayOfWeek / 7) * 100);
   const paceLabel = studyGoalPercentage >= expectedPacePct ? 'Ahead of Pace' : 'In Progress';
 
-  const userInitial = profile?.displayName ? profile.displayName.charAt(0).toUpperCase() : 'S';
+  const guestProfile: UserProfile = {
+    uid: 'guest-scholar',
+    displayName: 'Scholar (Guest)',
+    username: 'scholar',
+    bio: 'Computer Science and Mathematics student. Building daily habits, deep focus sessions, and connecting with study buddies in public.',
+    photoURL: '',
+    updatedAt: new Date().toISOString(),
+  };
+
+  const activeProfile = profile || guestProfile;
+  const userInitial = activeProfile.displayName ? activeProfile.displayName.charAt(0).toUpperCase() : 'S';
 
   const formatTimeAgo = (isoDate: string) => {
     try {
@@ -881,12 +967,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* Instagram-style Profile Header if logged in */}
-        {user && profile && (
+        {/* Instagram-style Profile Header */}
+        {activeProfile && (
           <div className="profile-card">
             <div className="avatar-ring">
-              {profile.photoURL ? (
-                <img src={profile.photoURL} alt={profile.displayName} className="avatar-img" />
+              {activeProfile.photoURL ? (
+                <img src={activeProfile.photoURL} alt={activeProfile.displayName} className="avatar-img" />
               ) : (
                 <div className="avatar-img">{userInitial}</div>
               )}
@@ -894,19 +980,23 @@ export default function App() {
 
             <div className="profile-meta">
               <div className="profile-handle-row">
-                <span className="profile-username">@{profile.username || 'scholar'}</span>
-                <span className="profile-name">• {profile.displayName}</span>
+                <span className="profile-username">@{activeProfile.username || 'scholar'}</span>
+                <span className="profile-name">• {activeProfile.displayName}</span>
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => setIsEditingProfile(true)}
+                  onClick={() => {
+                    setEditUsername(activeProfile.username || 'scholar');
+                    setEditBio(activeProfile.bio || '');
+                    setIsEditingProfile(true);
+                  }}
                   style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem' }}
                 >
                   Edit Profile
                 </button>
               </div>
 
-              <p className="profile-bio">{profile.bio}</p>
+              <p className="profile-bio">{activeProfile.bio}</p>
 
               <div className="profile-stats">
                 <div className="stat-item">
@@ -922,8 +1012,12 @@ export default function App() {
                   <span className="stat-label">This Week</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-num">{posts.filter(p => p.userId === user.uid).length}</span>
+                  <span className="stat-num">{posts.filter(p => p.userId === (user ? user.uid : 'guest-user')).length}</span>
                   <span className="stat-label">Posts</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-num" style={{ color: '#10b981' }}>{buddies.length}</span>
+                  <span className="stat-label">Buddies</span>
                 </div>
               </div>
 
@@ -934,7 +1028,7 @@ export default function App() {
                   <span className="analytics-pace">{paceLabel}</span>
                 </div>
                 <p className="analytics-sentence">
-                  @{profile.username || 'scholar'} has achieved {studyGoalPercentage}% of their study goals and {habitGoalPercentage}% of their habit goals this week.
+                  @{activeProfile.username || 'scholar'} has achieved {studyGoalPercentage}% of their study goals, {habitGoalPercentage}% of their habit goals, and connected with {buddies.length} study {buddies.length === 1 ? 'buddy' : 'buddies'} this week.
                 </p>
                 <div className="analytics-bars">
                   <div className="analytics-bar-item">
@@ -956,7 +1050,31 @@ export default function App() {
                       <div className="progress-fill habit" style={{ width: `${Math.min(100, habitGoalPercentage)}%` }} />
                     </div>
                   </div>
+
+                  <div className="analytics-bar-item">
+                    <div className="bar-meta">
+                      <span>Study Buddy Circle</span>
+                      <span><strong>{buddies.length}</strong> {buddies.length === 1 ? 'buddy' : 'buddies'} in circle</span>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${Math.min(100, Math.max(10, buddies.length * 20))}%`, background: 'linear-gradient(90deg, #10b981, #059669)' }} />
+                    </div>
+                  </div>
                 </div>
+
+                {/* Buddies chips if any */}
+                {buddies.length > 0 && (
+                  <div className="buddies-circle-row">
+                    {buddies.map(b => (
+                      <div key={b.buddyUserId} className="buddy-chip">
+                        <div className="buddy-chip-avatar">
+                          {b.buddyName.charAt(0).toUpperCase()}
+                        </div>
+                        <span>@{b.buddyUsername || b.buddyName}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -966,7 +1084,7 @@ export default function App() {
         {!user && !isAuthLoading && (
           <div className="auth-banner">
             <span className="auth-banner-text">
-              Sign in with Google to create your Instagram study profile, share reels and study documents with your circle, and sync across devices.
+              Sign in with Google to create your Instagram study profile, connect with study buddies, share reels and study documents, and sync across devices.
             </span>
             <button type="button" className="google-btn" onClick={handleGoogleLogin}>
               Login to Sync
@@ -1065,6 +1183,8 @@ export default function App() {
                   activeStudySessions.map(member => {
                     const isMe = member.userId === currentUserId;
                     const memberInitial = member.displayName ? member.displayName.charAt(0).toUpperCase() : 'S';
+                    const isBuddy = buddies.some(b => b.buddyUserId === member.userId);
+
                     return (
                       <div key={member.userId} className={`member-study-card ${isMe ? 'self-studying' : ''}`}>
                         <div className="studying-avatar-box">
@@ -1077,12 +1197,33 @@ export default function App() {
                         </div>
 
                         <div className="member-study-info">
-                          <div className="member-study-name">
-                            {member.displayName} {isMe ? '(You)' : ''}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <div className="member-study-name">
+                                {member.displayName} {isMe ? '(You)' : ''}
+                              </div>
+                              <div className="member-study-handle">
+                                @{member.username || 'scholar'}
+                              </div>
+                            </div>
+
+                            {!isMe && (
+                              <button
+                                type="button"
+                                className={`btn-buddy ${isBuddy ? 'added' : ''}`}
+                                onClick={() => handleToggleBuddy({
+                                  userId: member.userId,
+                                  displayName: member.displayName,
+                                  username: member.username,
+                                  photoURL: member.photoURL,
+                                })}
+                                title={isBuddy ? 'Click to remove from buddies' : 'Add to study buddies'}
+                              >
+                                {isBuddy ? 'Buddies' : '+ Add to Buddies'}
+                              </button>
+                            )}
                           </div>
-                          <div className="member-study-handle">
-                            @{member.username || 'scholar'}
-                          </div>
+
                           <div className="member-study-subject">
                             Studying {member.subjectName || 'Study Session'}
                           </div>
@@ -1434,7 +1575,8 @@ export default function App() {
               posts.map(post => {
                 const activeUid = user ? user.uid : 'guest-user';
                 const isLiked = post.likedBy?.includes(activeUid);
-                const isAuthor = user ? post.userId === user.uid : true;
+                const isAuthor = user ? post.userId === user.uid : post.userId === 'guest-user';
+                const isPostBuddy = buddies.some(b => b.buddyUserId === post.userId);
 
                 return (
                   <article key={post.id} className="post-card">
@@ -1460,15 +1602,32 @@ export default function App() {
                         </div>
                       </div>
 
-                      {isAuthor && (
-                        <button
-                          type="button"
-                          className="btn-icon-text danger"
-                          onClick={() => setItemToDelete({ type: 'post', id: post.id, name: (post.caption || 'Post').slice(0, 20) })}
-                        >
-                          Delete
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {!isAuthor && (
+                          <button
+                            type="button"
+                            className={`btn-buddy ${isPostBuddy ? 'added' : ''}`}
+                            onClick={() => handleToggleBuddy({
+                              userId: post.userId,
+                              displayName: post.authorName,
+                              username: post.authorUsername,
+                              photoURL: post.authorPhoto,
+                            })}
+                          >
+                            {isPostBuddy ? 'Buddies' : '+ Add to Buddies'}
+                          </button>
+                        )}
+
+                        {isAuthor && (
+                          <button
+                            type="button"
+                            className="btn-icon-text danger"
+                            onClick={() => setItemToDelete({ type: 'post', id: post.id, name: (post.caption || 'Post').slice(0, 20) })}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Post Media Display */}
