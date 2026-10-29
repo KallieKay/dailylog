@@ -78,6 +78,9 @@ Daily Flow brings social accountability and rhythm to academic and personal grow
 3. **Build for production**:
    ```bash
    npm run build
+
+
+   https://dailylog-1.ai.studio
    ```
 
 4. **Preview production build**:
