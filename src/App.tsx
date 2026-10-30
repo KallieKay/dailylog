@@ -297,12 +297,12 @@ export default function App() {
       }
     } else {
       setProfile({
-        uid: 'guest-scholar',
+        userId: 'guest-scholar',
         displayName: 'Scholar (Guest)',
         username: cleanUsername || 'scholar',
         bio: cleanBio || 'Computer Science and Mathematics student. Building daily habits and learning in public.',
         photoURL: '',
-        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       });
       setIsEditingProfile(false);
       showToast('Profile updated');
@@ -899,12 +899,12 @@ export default function App() {
   const paceLabel = studyGoalPercentage >= expectedPacePct ? 'Ahead of Pace' : 'In Progress';
 
   const guestProfile: UserProfile = {
-    uid: 'guest-scholar',
+    userId: 'guest-scholar',
     displayName: 'Scholar (Guest)',
     username: 'scholar',
     bio: 'Computer Science and Mathematics student. Building daily habits, deep focus sessions, and connecting with study buddies in public.',
     photoURL: '',
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
   };
 
   const activeProfile = profile || guestProfile;
@@ -1219,7 +1219,7 @@ export default function App() {
                                 })}
                                 title={isBuddy ? 'Click to remove from buddies' : 'Add to study buddies'}
                               >
-                                {isBuddy ? 'Buddies' : '+ Add to Buddies'}
+                                {isBuddy ? 'Buddy' : '+ Add to Buddies'}
                               </button>
                             )}
                           </div>
@@ -1614,7 +1614,7 @@ export default function App() {
                               photoURL: post.authorPhoto,
                             })}
                           >
-                            {isPostBuddy ? 'Buddies' : '+ Add to Buddies'}
+                            {isPostBuddy ? 'Buddy' : '+ Add to Buddies'}
                           </button>
                         )}
 
